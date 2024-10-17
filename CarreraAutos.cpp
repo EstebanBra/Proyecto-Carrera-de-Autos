@@ -7,11 +7,9 @@
 #include <algorithm>
 
 using namespace std;
-
 // Mutex para sincronizar la salida a la consola y la llegada de los autos
 mutex mtx;
 
-// Estructura para almacenar el resultado de cada auto
 struct Resultado {
     int id;
     int posicion;
@@ -19,28 +17,30 @@ struct Resultado {
 
 // Variables globales para almacenar el orden de llegada
 vector<Resultado> resultados;
-int posicion_actual = 1; // Posición de llegada de los autos
+int posicion_actual = 1;
 
-// Función que simula la carrera de autos
+// Función que simula la carrera  autos
 void carreraAuto(int id, int meta) {
     int trayectoRecorrido = 0;
-    random_device rd; // Generador de números aleatorios
-    mt19937 gen(rd()); // Algoritmo de generación numérica Mersenne Twister
-    uniform_int_distribution<> avanceAleatorio(1, 10);     // Avance aleatorio entre 1 y 10 metros
+    random_device rd; // Generador de numeros aleatorios
+    mt19937 gen(rd()); // Algorimo de generacion num aleatorios llamado Mersenne twister
+    uniform_int_distribution<> avanceAleatoreo(1, 10);     // Avance aleatorio entre 1 y 10 metros
     uniform_int_distribution<> retardoAvance(100, 500);  // Pausa aleatoria entre 100 y 500 ms
 
     while (trayectoRecorrido < meta) {
+        
         // Calcular avance aleatorio
-        int avance = avanceAleatorio(gen);
+        int avance = avanceAleatoreo(gen);
         trayectoRecorrido += avance;
-
-        if (trayectoRecorrido > meta) {
-            trayectoRecorrido = meta; // Ajustar si se sobrepasa la meta
+        
+        if (trayectoRecorrido > meta){
+          trayectoRecorrido = meta;
         }
-
-        // Asegura que solo un auto (hebra) se muestre por la consola a la vez
-        {
-            lock_guard<mutex> lock(mtx); // Bloquea el mutex para evitar condiciones de carrera
+        // Esto asegura que solo un auto(hebra) se muestre por la consola,
+        // es decir evita que varios autos escriban a mismo tiempo en la consola
+        {  
+            lock_guard<mutex> lock(mtx);
+            // Se imprime el id, el avance, el trayecto recorrido y la meta
             cout << "Auto " << id << " avanzó " << avance << " metros. Total: " 
                  << trayectoRecorrido << "/" << meta << " metros.\n";
         }
@@ -51,42 +51,45 @@ void carreraAuto(int id, int meta) {
 
     // Cuando el auto termina, registrar su posición de llegada
     {
-        lock_guard<mutex> lock(mtx); // Bloquear el mutex para la sección crítica
+        lock_guard<mutex> lock(mtx);
         resultados.push_back({id, posicion_actual});
         cout << "Auto " << id << " ha terminado la carrera en la posición " << posicion_actual << "!\n";
         posicion_actual++;
     }
 }
 
-int main() {
-    int meta, numAutos;
+int main(int argc, char* argv[]) {
 
     // Solicitar información al usuario
-    cout << "Introduce la distancia total de la carrera (en metros): ";
-    cin >> meta;
-    cout << "Introduce el número de autos: ";
-    cin >> numAutos;
+    if (argc != 3) {
+        cerr << "Uso: " << argv[0] << " <distancia> <num_autos>\n";
+        return 1;
+    }
 
+    int meta = stoi(argv[1]);
+    int numAutos = stoi(argv[2]);
+    
     // Crear un vector para almacenar los hilos
     vector<thread> autos;
 
-    // Crear los hilos (uno para cada auto)
+    // Crea los hilos (uno para cada auto)
     for (int i = 1; i <= numAutos; ++i) {
-        autos.push_back(thread(carreraAuto, i, meta)); // Crear un hilo para cada auto
+        autos.push_back(thread(carreraAuto, i, meta)); //
     }
 
     // Esperar a que todos los hilos terminen
     for (auto& t : autos) {
-        t.join(); // Unir el hilo, esperando su finalización
+        t.join(); // t, con referencia thread y join() es un metodo que se encarga de terminar la ejecucion
     }
 
     // Mostrar el resultado final de la carrera
     cout << "\nLa carrera ha terminado! Resultados finales:\n";
     
-    // Ordenar los resultados basados en la posición de llegada
-    sort(resultados.begin(), resultados.end(), [](Resultado a, Resultado b) { return a.posicion < b.posicion; });
+    // Sort, es una fucion de c++ que se incluye con <algorithm>, esta se utilisa para ordenar contenedores
+    // Ordena los autos comparando sus pociciones de llegada, y ver en que pocicion termino la carrera
+    sort(resultados.begin(), resultados.end(), [](Resultado a, Resultado b){ return a.posicion < b.posicion; });
     
-    // Mostrar los resultados ordenados
+    // Muestra los resultados y las pocicion de los autos ordenados por el sort
     for (const auto& res : resultados) {
         cout << "Auto " << res.id << " terminó en la posición " << res.posicion << ".\n";
     }
